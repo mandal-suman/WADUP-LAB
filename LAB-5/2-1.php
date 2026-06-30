@@ -3,16 +3,8 @@ January=>30,February=>28 upto December and multidimensional array for laptop alo
 two companies). -->
 
 <?php
-// Numeric array for Monday to Saturday
-echo "<b>Numeric array for Monday to Saturday:</b><br>";
 $days = array("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday");
 
-echo "<pre>";
-print_r($days);
-echo "</pre><br>";
-
-// Associative array for month with total days of month such as January=>30,February=>28 upto December
-echo "<b>Associative array for month with total days of month:</b><br>";
 $months = array(
     "January" => 31,
     "February" => 28,
@@ -28,25 +20,23 @@ $months = array(
     "December" => 31
 );
 
-echo "<pre>";
-print_r($months);
-echo "</pre><br>";
-
-// Multidimensional array for laptop along with company name inside that model and price(any two companies)
-echo "<b>Multidimensional array for laptop:</b><br>";
 $laptops = array(
     "Dell" => array(
-        "Model" => "XPS 13",
-        "Price" => "1200"
+        "Model" => "Inspiron 15",
+        "Price" => 55000
     ),
     "HP" => array(
-        "Model" => "Spectre x360",
-        "Price" => "1300"
+        "Model" => "Pavilion 14",
+        "Price" => 60000
     )
 );
 
-echo "<pre>";
-print_r($laptops);
-echo "</pre><br>";
+echo "<h3>Numeric Array</h3>";
+print_r($days);
 
+echo "<h3>Associative Array</h3>";
+print_r($months);
+
+echo "<h3>Multidimensional Array</h3>";
+print_r($laptops);
 ?>

@@ -22,7 +22,9 @@
         $username = $_POST['username'];
         $password = $_POST['password'];
 
-        if ($username === "suman" && $password === "1234") 
+        if ($username === "suman" && $password === "1234") {
+            header("Location: home.php");
+            exit();
         } else {
             echo "<center><h2 style='color: red;'>Login failed!</h2></center>";
         }

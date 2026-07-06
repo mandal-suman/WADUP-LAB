@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>PHP Include and Require Example</title>
+    <title>PHP Include and Require Practical</title>
 </head>
 <body>
 

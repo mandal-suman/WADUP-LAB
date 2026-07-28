@@ -5,23 +5,27 @@
         4) DATE_FORMAT(). -->
 
 <?php
-$currentDateTime = date('Y-m-d H:i:s');
-echo "<b>Current DateTime:</b> " . $currentDateTime . "<br>";
+$conn = mysqli_connect("localhost", "root", "", "2-7");
 
-$hour = date('H');
-echo "<b>HOUR:</b> " . $hour . "<br>";
+if (!$conn) {
+        die("Connection Failed: " . mysqli_connect_error());
+}
 
-$minute = date('i');
-echo "<b>MINUTE:</b> " . $minute . "<br>";
+$sql = "SELECT
+            HOUR(CURTIME()) AS Hour,
+            MINUTE(CURTIME()) AS Minute,
+            SECOND(CURTIME()) AS Second,
+            DATE_FORMAT(NOW(), '%d-%m-%Y %H:%i:%s') AS FormattedDateTime";
 
-$second = date('s');
-echo "<b>SECOND:</b> " . $second . "<br><br>";
+$result = mysqli_query($conn, $sql);
 
-$timestamp = time();
-echo "<b>DATE_FORMAT Examples:</b><br>";
-echo "Format 1 (Y-m-d): " . date('Y-m-d', $timestamp) . "<br>";
-echo "Format 2 (d/m/Y): " . date('d/m/Y', $timestamp) . "<br>";
-echo "Format 3 (l, F j, Y): " . date('l, F j, Y', $timestamp) . "<br>";
-echo "Format 4 (H:i:s): " . date('H:i:s', $timestamp) . "<br>";
-echo "Format 5 (Y-m-d H:i:s): " . date('Y-m-d H:i:s', $timestamp) . "<br>";
+if ($row = mysqli_fetch_assoc($result)) {
+        echo "<h2>MySQL Date and Time Functions</h2>";
+        echo "HOUR(): " . $row['Hour'] . "<br>";
+        echo "MINUTE(): " . $row['Minute'] . "<br>";
+        echo "SECOND(): " . $row['Second'] . "<br>";
+        echo "DATE_FORMAT(): " . $row['FormattedDateTime'] . "<br>";
+}
+
+mysqli_close($conn);
 ?>

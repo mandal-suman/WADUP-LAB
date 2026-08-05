@@ -1,3 +1,15 @@
+<!-- 
+    Create PHP Script to insert record into database, then display that data on screen in table format with action button edit and delete, When user click on edit button it will open edit page allow the user to edit record and if user click on delete  button then delete the record from table.
+    Table : 
+        UserName
+        Password
+
+        Confirm Password
+        Phone Number
+        Email 
+        Profile Picture in round sharp 
+-->
+
 <?php
 $conn = require_once __DIR__ . '/db.php';
 

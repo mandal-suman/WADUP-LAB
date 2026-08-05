@@ -1,151 +1,112 @@
 <?php
 $conn = require_once __DIR__ . '/db.php';
 
-if (!isset($_GET['id'])) {
-    die("Invalid Request");
+if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
+    die('Invalid Request');
 }
 
-$id = $_GET['id'];
+$id = (int) $_GET['id'];
 
-$sql = "SELECT * FROM user_management WHERE id = $id";
-$result = mysqli_query($conn, $sql);
+$stmt = mysqli_prepare($conn, "SELECT * FROM users WHERE id = ?");
+mysqli_stmt_bind_param($stmt, 'i', $id);
+mysqli_stmt_execute($stmt);
+$res = mysqli_stmt_get_result($stmt);
+$row = mysqli_fetch_assoc($res);
+mysqli_stmt_close($stmt);
 
-if (mysqli_num_rows($result) == 0) {
-    die("User not found.");
+if (!$row) {
+    die('User not found');
 }
 
-$row = mysqli_fetch_assoc($result);
+$errors = [];
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $username = trim($_POST['username'] ?? '');
+    $phone = trim($_POST['phone'] ?? '');
+    $email = trim($_POST['email'] ?? '');
 
-if (isset($_POST['update'])) {
+    $profile_name = $row['profile'];
+    if (isset($_FILES['profile']) && $_FILES['profile']['error'] === UPLOAD_ERR_OK) {
+        $tmp = $_FILES['profile']['tmp_name'];
+        $orig = basename($_FILES['profile']['name']);
+        $ext = pathinfo($orig, PATHINFO_EXTENSION);
+        $allowed = ['jpg','jpeg','png','gif'];
+        if (!in_array(strtolower($ext), $allowed)) {
+            $errors[] = 'Profile picture must be an image (jpg,png,gif).';
+        } else {
+            $newname = uniqid('p_') . '.' . $ext;
+            $dest = __DIR__ . '/uploads/' . $newname;
+            if (move_uploaded_file($tmp, $dest)) {
+                // remove old file
+                if (!empty($profile_name) && file_exists(__DIR__.'/uploads/'.$profile_name)) {
+                    @unlink(__DIR__.'/uploads/'.$profile_name);
+                }
+                $profile_name = $newname;
+            } else {
+                $errors[] = 'Failed to save uploaded file.';
+            }
+        }
+    }
 
-    $name = mysqli_real_escape_string($conn, $_POST['name']);
-    $email = mysqli_real_escape_string($conn, $_POST['email']);
-    $role = mysqli_real_escape_string($conn, $_POST['role']);
-
-    $update = "UPDATE user_management
-               SET
-                    name='$name',
-                    email='$email',
-                    role='$role'
-               WHERE id=$id";
-
-    if (mysqli_query($conn, $update)) {
-        header("Location: index.php");
-        exit();
-    } else {
-        echo "Error: " . mysqli_error($conn);
+    if (empty($errors)) {
+        $up = mysqli_prepare($conn, "UPDATE users SET username=?, phone=?, email=?, profile=? WHERE id=?");
+        mysqli_stmt_bind_param($up, 'ssssi', $username, $phone, $email, $profile_name, $id);
+        mysqli_stmt_execute($up);
+        mysqli_stmt_close($up);
+        header('Location: index.php');
+        exit;
     }
 }
-?>
 
+?>
 <!DOCTYPE html>
 <html>
-
 <head>
+    <meta charset="utf-8">
     <title>Edit User</title>
-
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f4f4f4;
-        }
-
-        .container {
-            width: 400px;
-            margin: 50px auto;
-            background: #fff;
-            padding: 20px;
-            border: 1px solid #ccc;
-        }
-
-        h2 {
-            text-align: center;
-        }
-
-        input,
-        select {
-            width: 100%;
-            padding: 10px;
-            margin: 8px 0;
-            box-sizing: border-box;
-        }
-
-        input[type=submit] {
-            background: #28a745;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-
-        input[type=submit]:hover {
-            background: #218838;
-        }
-
-        a {
-            text-decoration: none;
-            color: #007bff;
-        }
+        body{font-family:Arial, sans-serif; background:#f4f4f4; padding:30px}
+        .card{background:#fff; padding:20px; border:1px solid #ddd; max-width:600px; margin:auto}
+        label{display:block; margin-top:8px}
+        input[type=text], input[type=email]{width:100%; padding:8px}
+        input[type=submit]{margin-top:10px; padding:8px 12px}
+        img.avatar{width:80px; height:80px; border-radius:50%; object-fit:cover}
+        .errors{color:red}
     </style>
-
 </head>
-
 <body>
-
-    <div class="container">
-
+    <div class="card">
         <h2>Edit User</h2>
 
-        <form method="post">
+        <?php if (!empty($errors)): ?>
+            <div class="errors">
+                <ul>
+                <?php foreach($errors as $e): ?>
+                    <li><?php echo htmlspecialchars($e); ?></li>
+                <?php endforeach; ?>
+                </ul>
+            </div>
+        <?php endif; ?>
 
-            <label>Name</label>
-            <input
-                type="text"
-                name="name"
-                value="<?php echo htmlspecialchars($row['name']); ?>"
-                required>
+        <form method="post" enctype="multipart/form-data">
+            <label>Username</label>
+            <input type="text" name="username" value="<?php echo htmlspecialchars($row['username']); ?>" required>
+
+            <label>Phone Number</label>
+            <input type="text" name="phone" value="<?php echo htmlspecialchars($row['phone']); ?>">
 
             <label>Email</label>
-            <input
-                type="email"
-                name="email"
-                value="<?php echo htmlspecialchars($row['email']); ?>"
-                required>
+            <input type="email" name="email" value="<?php echo htmlspecialchars($row['email']); ?>">
 
-            <label>Role</label>
-            <select name="role">
+            <label>Profile Picture</label>
+            <?php if (!empty($row['profile']) && file_exists(__DIR__.'/uploads/'.$row['profile'])): ?>
+                <div><img class="avatar" src="uploads/<?php echo htmlspecialchars($row['profile']); ?>" alt=""></div>
+            <?php endif; ?>
+            <input type="file" name="profile" accept="image/*">
 
-                <option value="Admin"
-                    <?php if ($row['role'] == "Admin") echo "selected"; ?>>
-                    Admin
-                </option>
-
-                <option value="User"
-                    <?php if ($row['role'] == "User") echo "selected"; ?>>
-                    User
-                </option>
-
-                <option value="Editor"
-                    <?php if ($row['role'] == "Editor") echo "selected"; ?>>
-                    Editor
-                </option>
-
-                <option value="Manager"
-                    <?php if ($row['role'] == "Manager") echo "selected"; ?>>
-                    Manager
-                </option>
-
-            </select>
-
-            <input type="submit" name="update" value="Update User">
-
+            <input type="submit" value="Update User">
         </form>
 
-        <br>
-
-        <a href="index.php">← Back to User List</a>
-
+        <p><a href="index.php">← Back to list</a></p>
     </div>
-
 </body>
-
 </html>

@@ -1,107 +1,132 @@
 <?php
 $conn = require_once __DIR__ . '/db.php';
 
-$sql = "SELECT * FROM user_management";
-$result = mysqli_query($conn, $sql);
-?>
+$errors = [];
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $username = trim($_POST['username'] ?? '');
+    $password = $_POST['password'] ?? '';
+    $confirm = $_POST['confirm_password'] ?? '';
+    $phone = trim($_POST['phone'] ?? '');
+    $email = trim($_POST['email'] ?? '');
 
+    if ($username === '' || $password === '') {
+        $errors[] = 'Username and password are required.';
+    }
+
+    if ($password !== $confirm) {
+        $errors[] = 'Passwords do not match.';
+    }
+
+    $profile_name = null;
+    if (isset($_FILES['profile']) && $_FILES['profile']['error'] === UPLOAD_ERR_OK) {
+        $tmp = $_FILES['profile']['tmp_name'];
+        $orig = basename($_FILES['profile']['name']);
+        $ext = pathinfo($orig, PATHINFO_EXTENSION);
+        $allowed = ['jpg','jpeg','png','gif'];
+        if (!in_array(strtolower($ext), $allowed)) {
+            $errors[] = 'Profile picture must be an image (jpg,png,gif).';
+        } else {
+            $profile_name = uniqid('p_') . '.' . $ext;
+            $dest = __DIR__ . '/uploads/' . $profile_name;
+            if (!move_uploaded_file($tmp, $dest)) {
+                $errors[] = 'Failed to save uploaded file.';
+            }
+        }
+    }
+
+    if (empty($errors)) {
+        $hash = password_hash($password, PASSWORD_DEFAULT);
+        $stmt = mysqli_prepare($conn, "INSERT INTO users (username,password,phone,email,profile) VALUES (?,?,?,?,?)");
+        mysqli_stmt_bind_param($stmt, 'sssss', $username, $hash, $phone, $email, $profile_name);
+        mysqli_stmt_execute($stmt);
+        mysqli_stmt_close($stmt);
+        header('Location: index.php');
+        exit;
+    }
+}
+
+$res = mysqli_query($conn, "SELECT * FROM users ORDER BY id DESC");
+
+?>
 <!DOCTYPE html>
 <html>
 <head>
-    <title>User Management</title>
-
+    <meta charset="utf-8">
+    <title>Lab-13 - User CRUD</title>
     <style>
-        body{
-            font-family: Arial, sans-serif;
-            background:#f4f4f4;
-            margin:40px;
-        }
-
-        h2{
-            text-align:center;
-        }
-
-        table{
-            width:70%;
-            margin:auto;
-            border-collapse:collapse;
-            background:#fff;
-        }
-
-        th,td{
-            border:1px solid #ccc;
-            padding:10px;
-            text-align:center;
-        }
-
-        th{
-            background:#333;
-            color:#fff;
-        }
-
-        a{
-            text-decoration:none;
-            padding:6px 10px;
-            color:white;
-            border-radius:4px;
-            font-size:14px;
-        }
-
-        .edit{
-            background:green;
-        }
-
-        .delete{
-            background:red;
-        }
+        body{font-family:Arial, sans-serif; background:#f4f4f4; padding:30px}
+        .card{background:#fff; padding:20px; border:1px solid #ddd; max-width:800px; margin:auto}
+        label{display:block; margin-top:8px}
+        input[type=text], input[type=password], input[type=email]{width:100%; padding:8px}
+        input[type=submit]{margin-top:10px; padding:8px 12px}
+        table{width:100%; border-collapse:collapse; margin-top:20px}
+        th,td{border:1px solid #ccc; padding:8px; text-align:left}
+        img.avatar{width:56px; height:56px; border-radius:50%; object-fit:cover}
+        .actions a{display:inline-block; margin-right:6px; padding:6px 8px; color:#fff; border-radius:4px}
+        .edit{background:green}
+        .delete{background:red}
+        .errors{color:red}
     </style>
-
 </head>
-
 <body>
+    <div class="card">
+        <h2>Create User</h2>
 
-<h2>User Management System</h2>
+        <?php if (!empty($errors)): ?>
+            <div class="errors">
+                <ul>
+                <?php foreach($errors as $e): ?>
+                    <li><?php echo htmlspecialchars($e); ?></li>
+                <?php endforeach; ?>
+                </ul>
+            </div>
+        <?php endif; ?>
 
-<table>
+        <form method="post" enctype="multipart/form-data">
+            <label>Username</label>
+            <input type="text" name="username" required>
 
-<tr>
-    <th>ID</th>
-    <th>Name</th>
-    <th>Email</th>
-    <th>Role</th>
-    <th>Action</th>
-</tr>
+            <label>Password</label>
+            <input type="password" name="password" required>
 
-<?php
+            <label>Confirm Password</label>
+            <input type="password" name="confirm_password" required>
 
-while($row = mysqli_fetch_assoc($result))
-{
-?>
+            <label>Phone Number</label>
+            <input type="text" name="phone">
 
-<tr>
+            <label>Email</label>
+            <input type="email" name="email">
 
-<td><?php echo $row['id']; ?></td>
-<td><?php echo $row['name']; ?></td>
-<td><?php echo $row['email']; ?></td>
-<td><?php echo $row['role']; ?></td>
+            <label>Profile Picture</label>
+            <input type="file" name="profile" accept="image/*">
 
-<td>
-    <a class="edit" href="edit.php?id=<?php echo $row['id']; ?>">Edit</a>
+            <input type="submit" value="Create User">
+        </form>
 
-    <a class="delete"
-       href="delete.php?id=<?php echo $row['id']; ?>"
-       onclick="return confirm('Delete this record?');">
-       Delete
-    </a>
-</td>
-
-</tr>
-
-<?php
-}
-?>
-
-</table>
-
+        <h2>User List</h2>
+        <table>
+            <tr><th>ID</th><th>Avatar</th><th>Username</th><th>Phone</th><th>Email</th><th>Action</th></tr>
+            <?php while($row = mysqli_fetch_assoc($res)): ?>
+                <tr>
+                    <td><?php echo $row['id']; ?></td>
+                    <td>
+                        <?php if (!empty($row['profile']) && file_exists(__DIR__.'/uploads/'.$row['profile'])): ?>
+                            <img class="avatar" src="uploads/<?php echo htmlspecialchars($row['profile']); ?>" alt="">
+                        <?php else: ?>
+                            <img class="avatar" src="https://via.placeholder.com/56" alt="">
+                        <?php endif; ?>
+                    </td>
+                    <td><?php echo htmlspecialchars($row['username']); ?></td>
+                    <td><?php echo htmlspecialchars($row['phone']); ?></td>
+                    <td><?php echo htmlspecialchars($row['email']); ?></td>
+                    <td class="actions">
+                        <a class="edit" href="edit.php?id=<?php echo $row['id']; ?>">Edit</a>
+                        <a class="delete" href="delete.php?id=<?php echo $row['id']; ?>" onclick="return confirm('Delete this user?')">Delete</a>
+                    </td>
+                </tr>
+            <?php endwhile; ?>
+        </table>
+    </div>
 </body>
 </html>

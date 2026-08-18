@@ -1,3 +1,5 @@
+<!-- Select a few HTML elements (e.g., paragraphs, headings, buttons) and set their background color to red using jQuery -->
+
 <!DOCTYPE html>
 <html>
 

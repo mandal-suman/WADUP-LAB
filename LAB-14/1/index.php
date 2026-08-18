@@ -1,3 +1,6 @@
+<!-- Build a navigation menu with links to different sections of your website. Use jQuery and AJAX to load content dynamically when the user clicks
+on a menu item. Fetch data from a server (e.g., blog posts, product details) and display it without refreshing the entire page. -->
+
 <!DOCTYPE html>
 <html>
 
